@@ -5,9 +5,13 @@ const sub = document.getElementById("sub");
 const audio = document.getElementById("audio");
 
 let songs = [];
+let memory = JSON.parse(localStorage.getItem("sonix_memory")) || {
+  name: null,
+  interactions: 0
+};
 
 // =========================
-// LOAD SONGS (UPLOAD)
+// FILE UPLOAD
 // =========================
 document.getElementById("upload").addEventListener("change", (e) => {
   songs = Array.from(e.target.files).map(file =>
@@ -16,7 +20,7 @@ document.getElementById("upload").addEventListener("change", (e) => {
 });
 
 // =========================
-// SPEECH SETUP
+// SPEECH
 // =========================
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -32,6 +36,8 @@ rec.onresult = (e) => {
     e.results[e.results.length - 1][0].transcript.toLowerCase();
 
   output(text);
+  memory.interactions++;
+  save();
 
   if (text.includes("hey sonix")) {
     speak("I'm here");
@@ -45,25 +51,46 @@ rec.onresult = (e) => {
 rec.onend = () => setTimeout(() => rec.start(), 500);
 
 // =========================
-// CORE LOGIC
+// CORE
 // =========================
-
 function handle(text) {
+
+  if (text.includes("my name is")) {
+    const name = text.split("my name is")[1].trim();
+    memory.name = name;
+    save();
+    speak(`Nice to meet you ${name}`);
+    return;
+  }
+
   if (text.includes("play")) {
     speak("Playing music");
     play();
+    return;
   }
 
   if (text.includes("stop")) {
     audio.pause();
     speak("Stopped");
+    return;
   }
+
+  if (text.includes("who am i")) {
+    if (memory.name) {
+      speak(`You are ${memory.name}`);
+    } else {
+      speak("I don't know your name yet");
+    }
+    return;
+  }
+
+  // basic conversation feel
+  respond();
 }
 
 // =========================
-// PLAY MUSIC
+// MUSIC
 // =========================
-
 function play() {
   const src =
     songs.length > 0
@@ -75,11 +102,28 @@ function play() {
 }
 
 // =========================
+// RESPONSE
+// =========================
+function respond() {
+  setState("thinking");
+
+  const replies = [
+    "I understand",
+    "Tell me more",
+    "Interesting",
+    "I'm learning from you"
+  ];
+
+  const reply = replies[Math.floor(Math.random() * replies.length)];
+
+  setTimeout(() => speak(reply), 800);
+}
+
+// =========================
 // VOICE
 // =========================
-
 function speak(text) {
-  window.speechSynthesis.cancel();
+  speechSynthesis.cancel();
 
   setState("speaking");
 
@@ -90,9 +134,8 @@ function speak(text) {
 }
 
 // =========================
-// UI STATE
+// STATE
 // =========================
-
 function setState(state) {
   orb.className = "orb " + state;
 
@@ -106,9 +149,15 @@ function setState(state) {
 }
 
 // =========================
+// STORAGE
+// =========================
+function save() {
+  localStorage.setItem("sonix_memory", JSON.stringify(memory));
+}
+
+// =========================
 // OUTPUT
 // =========================
-
 function output(text) {
   outputEl.textContent = text;
-    }
+}
