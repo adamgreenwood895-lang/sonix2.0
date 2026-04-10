@@ -13,10 +13,10 @@ body {
   background:
     radial-gradient(circle at 30% 20%, rgba(0,229,255,0.1), transparent 40%),
     radial-gradient(circle at 80% 40%, rgba(255,0,255,0.08), transparent 40%);
-  animation: move 12s infinite alternate;
+  animation: drift 12s infinite alternate;
 }
 
-@keyframes move {
+@keyframes drift {
   0% { transform: scale(1); }
   100% { transform: scale(1.1); }
 }
@@ -29,19 +29,19 @@ body {
 
 .title {
   font-size: clamp(50px, 7vw, 90px);
-  letter-spacing: 15px;
+  letter-spacing: 14px;
   text-shadow: 0 0 30px #00e5ff;
 }
 
 /* ORB */
 .orb {
-  width: 140px;
-  height: 140px;
+  width: 150px;
+  height: 150px;
   margin: 60px auto;
   border-radius: 50%;
   background: radial-gradient(circle, #00e5ff, #0044ff);
-  box-shadow: 0 0 60px #00e5ff;
-  transition: 0.3s;
+  box-shadow: 0 0 70px #00e5ff;
+  transition: all 0.3s ease;
 }
 
 .orb.listening { transform: scale(1.1); }
