@@ -3,67 +3,80 @@ const outputEl = document.getElementById("output");
 const statusEl = document.getElementById("status");
 const orb = document.getElementById("orb");
 
-let songs = [];
+// =========================
+// 🎧 MUSIC LIBRARY (LOCAL FILES)
+// =========================
+
+const library = {
+  chill: [
+    "music/chill1.mp3",
+    "music/chill2.mp3"
+  ],
+  dance: [
+    "music/dance1.mp3",
+    "music/dance2.mp3"
+  ]
+};
 
 // =========================
-// 🧠 SAFE STARTUP CHECK
+// 📁 UPLOADED SONGS
+// =========================
+
+let uploadedSongs = [];
+let uploadIndex = 0;
+
+// =========================
+// 🧠 MEMORY SYSTEM
+// =========================
+
+let memory = JSON.parse(localStorage.getItem("sonix_memory")) || {
+  name: null,
+  interactions: 0
+};
+
+function saveMemory() {
+  localStorage.setItem("sonix_memory", JSON.stringify(memory));
+}
+
+// =========================
+// 🚀 SAFE INIT (PREVENT BREAKS)
 // =========================
 
 window.addEventListener("load", () => {
 
-  log("SONIX LOADED ✔");
+  log("SONIX CORE LOADED ✔");
 
   const upload = document.getElementById("upload");
-  const playBtn = document.getElementById("playBtn");
-
-  if (!outputEl || !statusEl || !orb) {
-    alert("CRITICAL ERROR: Missing HTML elements");
-    return;
-  }
 
   // =========================
-  // 📁 UPLOAD TEST
+  // 📁 UPLOAD SYSTEM (FIXED)
   // =========================
 
   if (upload) {
     upload.addEventListener("change", (e) => {
 
-      log("UPLOAD TRIGGERED");
-
       const files = Array.from(e.target.files || []);
 
-      songs = files.map(f => ({
-        name: f.name,
-        url: URL.createObjectURL(f)
+      uploadedSongs = files.map(file => ({
+        name: file.name,
+        url: URL.createObjectURL(file)
       }));
 
-      output(`Loaded ${songs.length} songs ✔`);
-    });
-  } else {
-    log("UPLOAD ELEMENT NOT FOUND");
-  }
+      uploadIndex = 0;
 
-  // =========================
-  // ▶️ BUTTON TEST (IMPORTANT)
-  // =========================
-
-  if (playBtn) {
-    playBtn.addEventListener("click", () => {
-      log("PLAY BUTTON CLICKED");
-      playMusic();
+      output(`Uploaded ${uploadedSongs.length} songs ✔`);
     });
   }
 
   // =========================
-  // 🎤 VOICE CHECK (CRITICAL FIX)
+  // 🎤 VOICE SYSTEM (WORKING CORE)
   // =========================
 
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    output("SpeechRecognition NOT supported in this browser");
-    log("VOICE API MISSING");
+    output("Voice not supported in this browser");
     return;
   }
 
@@ -73,9 +86,9 @@ window.addEventListener("load", () => {
 
   try {
     rec.start();
-    log("VOICE STARTED");
+    log("VOICE STARTED ✔");
   } catch (e) {
-    log("VOICE START ERROR: " + e.message);
+    log("VOICE ERROR START: " + e.message);
   }
 
   rec.onresult = (e) => {
@@ -83,65 +96,116 @@ window.addEventListener("load", () => {
     const text =
       e.results[e.results.length - 1][0].transcript.toLowerCase();
 
-    log("VOICE INPUT: " + text);
-
     output(text);
+    memory.interactions++;
+    saveMemory();
 
     if (text.includes("hey sonix")) {
       speak("I'm here");
+      setState("listening");
       return;
     }
 
-    if (text.includes("play")) playMusic();
-    if (text.includes("stop")) stopMusic();
-  };
-
-  rec.onerror = (e) => {
-    log("VOICE ERROR: " + e.error);
-    output("Voice error: " + e.error);
+    handleCommand(text);
   };
 
   rec.onend = () => {
-    log("VOICE RESTARTING");
-    setTimeout(() => rec.start(), 500);
+    setTimeout(() => rec.start(), 400);
   };
-
 });
 
 // =========================
-// 🎧 MUSIC ENGINE (SAFE)
+// 🧠 COMMAND ENGINE
 // =========================
 
-function playMusic() {
+function handleCommand(text) {
 
-  log("PLAY MUSIC CALLED");
+  // NAME MEMORY
+  if (text.includes("my name is")) {
+    const name = text.split("my name is")[1].trim();
+    memory.name = name;
+    saveMemory();
+    speak(`Nice to meet you ${name}`);
+    return;
+  }
+
+  if (text.includes("who am i")) {
+    speak(memory.name ? `You are ${memory.name}` : "I don't know yet");
+    return;
+  }
+
+  // MUSIC COMMANDS
+  if (text.includes("play chill")) return playGenre("chill");
+  if (text.includes("play dance")) return playGenre("dance");
+
+  if (text.includes("play")) return playAny();
+  if (text.includes("stop")) return stopMusic();
+  if (text.includes("next")) return playAny();
+
+  speak("I heard you");
+}
+
+// =========================
+// 🎧 PLAY GENRE (LOCAL FILES)
+// =========================
+
+function playGenre(genre) {
+
+  const songs = library[genre];
 
   if (!songs || songs.length === 0) {
-    output("No uploaded songs → fallback track");
-
-    audio.src =
-      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
-
-    audio.play();
+    output("No songs found in " + genre);
     return;
   }
 
-  const song = songs[0];
+  const pick = songs[Math.floor(Math.random() * songs.length)];
 
-  if (!song?.url) {
-    output("Song broken object");
-    return;
-  }
-
-  audio.src = song.url;
+  audio.src = pick;
   audio.play();
 
-  output("Playing: " + song.name);
+  output("Playing " + genre + ": " + pick);
+  setState("speaking");
 }
+
+// =========================
+// 🎧 PLAY ANY (UPLOAD FIRST)
+// =========================
+
+function playAny() {
+
+  // uploaded songs first
+  if (uploadedSongs.length > 0) {
+
+    const song = uploadedSongs[uploadIndex];
+
+    audio.src = song.url;
+    audio.play();
+
+    output("Playing: " + song.name);
+
+    uploadIndex++;
+    if (uploadIndex >= uploadedSongs.length) uploadIndex = 0;
+
+    return;
+  }
+
+  // fallback library
+  const all = Object.values(library).flat();
+  const pick = all[Math.floor(Math.random() * all.length)];
+
+  audio.src = pick;
+  audio.play();
+
+  output("Playing system track");
+}
+
+// =========================
+// ⏹ STOP
+// =========================
 
 function stopMusic() {
   audio.pause();
-  output("Stopped");
+  output("Music stopped");
 }
 
 // =========================
@@ -153,19 +217,23 @@ function speak(text) {
 
   const msg = new SpeechSynthesisUtterance(text);
   msg.rate = 1;
+  msg.pitch = 1.05;
 
   speechSynthesis.speak(msg);
 }
 
 // =========================
-// 📺 UI HELPERS
+// 📺 UI
 // =========================
 
+function setState(state) {
+  if (orb) orb.className = "orb " + state;
+}
+
 function output(text) {
-  outputEl.textContent = text;
-  log("OUTPUT: " + text);
+  if (outputEl) outputEl.textContent = text;
 }
 
 function log(msg) {
-  console.log("SONIX DEBUG:", msg);
-        }
+  console.log("SONIX:", msg);
+}
