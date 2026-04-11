@@ -15,22 +15,19 @@
 
   <div class="hero">
     <div class="title">SONIX</div>
-    <div id="sub">ready</div>
+    <div id="sub">system ready</div>
   </div>
 
   <div id="orb" class="orb"></div>
 
   <div id="status">Idle</div>
 
-  <div id="output">Upload music to begin</div>
+  <div id="output">Waiting for input...</div>
 
-  <!-- ✅ IMPORTANT FIX: label wrapper (mobile-safe click trigger) -->
-  <label class="uploadBtn">
-    Upload Music
-    <input type="file" id="upload" multiple accept="audio/*">
-  </label>
+  <!-- SAFE FILE INPUT -->
+  <input id="upload" type="file" multiple accept="audio/*">
 
-  <button id="playBtn">Play Music</button>
+  <button id="playBtn">Play Test Track</button>
 
   <audio id="audio"></audio>
 
