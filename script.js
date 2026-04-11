@@ -1,179 +1,171 @@
-// =========================
-// SONIX 2.0 - ELITE AUDIO CORE
-// =========================
-
 const audio = document.getElementById("audio");
 const outputEl = document.getElementById("output");
 const statusEl = document.getElementById("status");
 const orb = document.getElementById("orb");
 
-// =========================
-// 🎧 MUSIC LIBRARY (REPO FILES)
-// =========================
-
-const library = {
-  chill: [
-    "music/chill1.mp3",
-    "music/chill2.mp3"
-  ],
-  dance: [
-    "music/dance1.mp3",
-    "music/dance2.mp3"
-  ]
-};
-
-// Uploaded files (optional fallback)
-let uploadedSongs = [];
-let uploadIndex = 0;
+let songs = [];
 
 // =========================
-// 📁 FILE UPLOAD SYSTEM (SAFE)
+// 🧠 SAFE STARTUP CHECK
 // =========================
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("load", () => {
+
+  log("SONIX LOADED ✔");
 
   const upload = document.getElementById("upload");
+  const playBtn = document.getElementById("playBtn");
+
+  if (!outputEl || !statusEl || !orb) {
+    alert("CRITICAL ERROR: Missing HTML elements");
+    return;
+  }
+
+  // =========================
+  // 📁 UPLOAD TEST
+  // =========================
 
   if (upload) {
     upload.addEventListener("change", (e) => {
 
-      console.log("UPLOAD EVENT TRIGGERED");
+      log("UPLOAD TRIGGERED");
 
       const files = Array.from(e.target.files || []);
 
-      uploadedSongs = files.map(file => ({
-        name: file.name,
-        url: URL.createObjectURL(file)
+      songs = files.map(f => ({
+        name: f.name,
+        url: URL.createObjectURL(f)
       }));
 
-      uploadIndex = 0;
+      output(`Loaded ${songs.length} songs ✔`);
+    });
+  } else {
+    log("UPLOAD ELEMENT NOT FOUND");
+  }
 
-      output(`Uploaded ${uploadedSongs.length} songs`);
+  // =========================
+  // ▶️ BUTTON TEST (IMPORTANT)
+  // =========================
+
+  if (playBtn) {
+    playBtn.addEventListener("click", () => {
+      log("PLAY BUTTON CLICKED");
+      playMusic();
     });
   }
 
   // =========================
-  // 🎤 VOICE ENGINE (SAFE INIT)
+  // 🎤 VOICE CHECK (CRITICAL FIX)
   // =========================
 
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  if (SpeechRecognition) {
-
-    const rec = new SpeechRecognition();
-    rec.continuous = true;
-    rec.lang = "en-GB";
-
-    rec.start();
-
-    rec.onresult = (e) => {
-
-      const text =
-        e.results[e.results.length - 1][0].transcript.toLowerCase();
-
-      console.log("VOICE:", text);
-
-      output(text);
-
-      if (text.includes("hey sonix")) {
-        speak("I'm here");
-        setState("listening");
-        return;
-      }
-
-      handleVoice(text);
-    };
-
-    rec.onend = () => setTimeout(() => rec.start(), 500);
-
-  } else {
-    output("Voice not supported in this browser");
+  if (!SpeechRecognition) {
+    output("SpeechRecognition NOT supported in this browser");
+    log("VOICE API MISSING");
+    return;
   }
+
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.lang = "en-GB";
+
+  try {
+    rec.start();
+    log("VOICE STARTED");
+  } catch (e) {
+    log("VOICE START ERROR: " + e.message);
+  }
+
+  rec.onresult = (e) => {
+
+    const text =
+      e.results[e.results.length - 1][0].transcript.toLowerCase();
+
+    log("VOICE INPUT: " + text);
+
+    output(text);
+
+    if (text.includes("hey sonix")) {
+      speak("I'm here");
+      return;
+    }
+
+    if (text.includes("play")) playMusic();
+    if (text.includes("stop")) stopMusic();
+  };
+
+  rec.onerror = (e) => {
+    log("VOICE ERROR: " + e.error);
+    output("Voice error: " + e.error);
+  };
+
+  rec.onend = () => {
+    log("VOICE RESTARTING");
+    setTimeout(() => rec.start(), 500);
+  };
 
 });
 
 // =========================
-// 🧠 VOICE COMMAND ENGINE
+// 🎧 MUSIC ENGINE (SAFE)
 // =========================
 
-function handleVoice(text) {
+function playMusic() {
 
-  // 🎧 CHILL
-  if (text.includes("play chill")) {
-    playGenre("chill");
-    return;
-  }
-
-  // 🎧 DANCE
-  if (text.includes("play dance")) {
-    playGenre("dance");
-    return;
-  }
-
-  // ▶️ GENERIC PLAY
-  if (text.includes("play")) {
-    playAny();
-    return;
-  }
-
-  // ⏹ STOP
-  if (text.includes("stop")) {
-    audio.pause();
-    speak("Music stopped");
-    setState("idle");
-    return;
-  }
-
-  // NEXT TRACK
-  if (text.includes("next")) {
-    playAny();
-    return;
-  }
-
-  // NAME MEMORY EXAMPLE
-  if (text.includes("my name is")) {
-    const name = text.split("my name is")[1].trim();
-    localStorage.setItem("sonix_name", name);
-    speak(`Nice to meet you ${name}`);
-    return;
-  }
-
-  // DEFAULT RESPONSE
-  speak("I heard you");
-}
-
-// =========================
-// 🎧 PLAY GENRE (REPO MUSIC FIX)
-// =========================
-
-function playGenre(genre) {
-
-  const songs = library[genre];
+  log("PLAY MUSIC CALLED");
 
   if (!songs || songs.length === 0) {
-    output("No songs found in " + genre);
+    output("No uploaded songs → fallback track");
+
+    audio.src =
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+
+    audio.play();
     return;
   }
 
-  const pick = songs[Math.floor(Math.random() * songs.length)];
+  const song = songs[0];
 
-  console.log("PLAYING GENRE:", genre, pick);
+  if (!song?.url) {
+    output("Song broken object");
+    return;
+  }
 
-  audio.src = pick;
+  audio.src = song.url;
   audio.play();
 
-  output(`Playing ${genre}: ${pick}`);
-  setState("speaking");
+  output("Playing: " + song.name);
+}
+
+function stopMusic() {
+  audio.pause();
+  output("Stopped");
 }
 
 // =========================
-// 🎧 PLAY ANY (UPLOAD + FALLBACK)
+// 🗣️ VOICE OUTPUT
 // =========================
 
-function playAny() {
+function speak(text) {
+  speechSynthesis.cancel();
 
-  // 1. Uploaded songs first
-  if (uploadedSongs.length > 0) {
+  const msg = new SpeechSynthesisUtterance(text);
+  msg.rate = 1;
 
-    const song = uploadedSongs[uploadIndex
+  speechSynthesis.speak(msg);
+}
+
+// =========================
+// 📺 UI HELPERS
+// =========================
+
+function output(text) {
+  outputEl.textContent = text;
+  log("OUTPUT: " + text);
+}
+
+function log(msg) {
+  console.log("SONIX DEBUG:", msg);
+        }
