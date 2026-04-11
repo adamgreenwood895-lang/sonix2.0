@@ -4,24 +4,51 @@ const outputEl = document.getElementById("output");
 const sub = document.getElementById("sub");
 const audio = document.getElementById("audio");
 
-let songs = [];
-let memory = JSON.parse(localStorage.getItem("sonix_memory")) || {
-  name: null,
-  interactions: 0
+// =========================
+// 🎧 MUSIC LIBRARY
+// =========================
+
+const library = {
+  chill: [
+    "music/chill1.mp3",
+    "music/chill2.mp3"
+  ],
+  drill: [
+    "music/drill1.mp3",
+    "music/drill2.mp3"
+  ],
+  house: [
+    "music/house1.mp3"
+  ]
 };
 
-// =========================
-// FILE UPLOAD
-// =========================
+let uploadedSongs = [];
+
+// upload support
 document.getElementById("upload").addEventListener("change", (e) => {
-  songs = Array.from(e.target.files).map(file =>
+  uploadedSongs = Array.from(e.target.files).map(file =>
     URL.createObjectURL(file)
   );
 });
 
 // =========================
-// SPEECH
+// 🧠 MEMORY
 // =========================
+
+let memory = JSON.parse(localStorage.getItem("sonix_memory")) || {
+  name: null,
+  interactions: 0,
+  lastGenre: null
+};
+
+function save() {
+  localStorage.setItem("sonix_memory", JSON.stringify(memory));
+}
+
+// =========================
+// 🎤 SPEECH ENGINE
+// =========================
+
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 
@@ -48,13 +75,15 @@ rec.onresult = (e) => {
   handle(text);
 };
 
-rec.onend = () => setTimeout(() => rec.start(), 500);
+rec.onend = () => setTimeout(() => rec.start(), 400);
 
 // =========================
-// CORE
+// 🧠 CORE LOGIC
 // =========================
+
 function handle(text) {
 
+  // name memory
   if (text.includes("my name is")) {
     const name = text.split("my name is")[1].trim();
     memory.name = name;
@@ -63,9 +92,22 @@ function handle(text) {
     return;
   }
 
+  // recall name
+  if (text.includes("who am i")) {
+    speak(memory.name ? `You are ${memory.name}` : "I don't know yet");
+    return;
+  }
+
+  // MUSIC CONTROL
   if (text.includes("play")) {
+
+    if (text.includes("chill")) return playGenre("chill");
+    if (text.includes("dance")) return playGenre("drill");
+    if (text.includes("bounce")) return playGenre("bounce");
+                                          
+    // fallback
     speak("Playing music");
-    play();
+    playAny();
     return;
   }
 
@@ -75,35 +117,58 @@ function handle(text) {
     return;
   }
 
-  if (text.includes("who am i")) {
-    if (memory.name) {
-      speak(`You are ${memory.name}`);
-    } else {
-      speak("I don't know your name yet");
-    }
+  // next track
+  if (text.includes("next")) {
+    speak("Next track");
+    playAny();
     return;
   }
 
-  // basic conversation feel
+  // conversation feel
   respond();
 }
 
 // =========================
-// MUSIC
+// 🎧 MUSIC FUNCTIONS
 // =========================
-function play() {
-  const src =
-    songs.length > 0
-      ? songs[Math.floor(Math.random() * songs.length)]
-      : "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
 
-  audio.src = src;
+function playGenre(genre) {
+  const songs = library[genre];
+
+  if (!songs || songs.length === 0) {
+    speak("No songs found in that category");
+    return;
+  }
+
+  const pick = songs[Math.floor(Math.random() * songs.length)];
+
+  memory.lastGenre = genre;
+  save();
+
+  audio.src = pick;
+  audio.play();
+
+  speak(`Playing ${genre} music`);
+}
+
+function playAny() {
+  if (uploadedSongs.length > 0) {
+    const pick =
+      uploadedSongs[Math.floor(Math.random() * uploadedSongs.length)];
+    audio.src = pick;
+  } else {
+    const all = Object.values(library).flat();
+    const pick = all[Math.floor(Math.random() * all.length)];
+    audio.src = pick;
+  }
+
   audio.play();
 }
 
 // =========================
-// RESPONSE
+// 🤖 RESPONSE ENGINE
 // =========================
+
 function respond() {
   setState("thinking");
 
@@ -111,31 +176,37 @@ function respond() {
     "I understand",
     "Tell me more",
     "Interesting",
-    "I'm learning from you"
+    "I'm learning from you",
+    "That makes sense"
   ];
 
   const reply = replies[Math.floor(Math.random() * replies.length)];
 
-  setTimeout(() => speak(reply), 800);
+  setTimeout(() => speak(reply), 700);
 }
 
 // =========================
-// VOICE
+// 🗣️ VOICE
 // =========================
+
 function speak(text) {
   speechSynthesis.cancel();
 
   setState("speaking");
 
   const msg = new SpeechSynthesisUtterance(text);
+  msg.rate = 1;
+  msg.pitch = 1.1;
+
   msg.onend = () => setState("listening");
 
   speechSynthesis.speak(msg);
 }
 
 // =========================
-// STATE
+// UI STATE
 // =========================
+
 function setState(state) {
   orb.className = "orb " + state;
 
@@ -149,15 +220,9 @@ function setState(state) {
 }
 
 // =========================
-// STORAGE
-// =========================
-function save() {
-  localStorage.setItem("sonix_memory", JSON.stringify(memory));
-}
-
-// =========================
 // OUTPUT
 // =========================
+
 function output(text) {
   outputEl.textContent = text;
-}
+    }
