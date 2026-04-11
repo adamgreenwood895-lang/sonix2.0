@@ -1,93 +1,115 @@
 const audio = document.getElementById("audio");
 const outputEl = document.getElementById("output");
-const statusEl = document.getElementById("status");
-const orb = document.getElementById("orb");
 
 let songs = [];
-let current = 0;
+let currentIndex = 0;
 
 // =========================
-// ⚡ SAFE INIT (FIXES MOBILE BUGS)
+// 🔧 FORCE SAFE INIT
 // =========================
-window.addEventListener("DOMContentLoaded", () => {
+
+window.onload = () => {
+
+  console.log("SONIX JS LOADED ✔");
 
   const upload = document.getElementById("upload");
   const playBtn = document.getElementById("playBtn");
 
-  // =========================
-  // 🎧 UPLOAD FIX (MAIN ISSUE FIXED)
-  // =========================
-  upload.addEventListener("change", (e) => {
+  if (!upload) console.error("UPLOAD INPUT NOT FOUND ❌");
+  if (!playBtn) console.error("PLAY BUTTON NOT FOUND ❌");
 
-    const files = Array.from(e.target.files);
+  // =========================
+  // 📁 FILE UPLOAD DEBUG
+  // =========================
+
+  upload.addEventListener("change", (event) => {
+
+    console.log("UPLOAD EVENT TRIGGERED ✔");
+
+    const files = event.target.files;
+
+    console.log("FILES RECEIVED:", files);
 
     if (!files || files.length === 0) {
       output("No files selected");
       return;
     }
 
-    songs = files.map(file => ({
-      name: file.name,
-      url: URL.createObjectURL(file)
-    }));
+    songs = [];
 
-    current = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      console.log("ADDING FILE:", file.name);
+
+      songs.push({
+        name: file.name,
+        url: URL.createObjectURL(file)
+      });
+    }
+
+    currentIndex = 0;
+
+    console.log("SONGS ARRAY:", songs);
 
     output(`Loaded ${songs.length} songs ✔`);
   });
 
   // =========================
-  // ▶️ PLAY BUTTON (FOR TESTING)
+  // ▶️ PLAY BUTTON TEST
   // =========================
+
   playBtn.addEventListener("click", () => {
+    console.log("PLAY BUTTON CLICKED");
     playMusic();
   });
-
-});
+};
 
 // =========================
-// 🎧 MUSIC ENGINE (FIXED)
+// 🎧 MUSIC ENGINE
 // =========================
+
 function playMusic() {
 
-  // DEBUG LOG
-  console.log("Songs array:", songs);
+  console.log("PLAY MUSIC CALLED");
+  console.log("SONGS:", songs);
 
   if (!songs || songs.length === 0) {
-    output("No uploaded songs — using fallback track");
+    output("No uploads detected → playing fallback track");
 
-    audio.src = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+    audio.src =
+      "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+
     audio.play();
-
     return;
   }
 
-  const song = songs[current];
+  const song = songs[currentIndex];
 
-  if (!song || !song.url) {
-    output("Song error detected");
+  if (!song) {
+    output("Song missing at index");
     return;
   }
+
+  console.log("PLAYING:", song.name);
 
   audio.src = song.url;
   audio.play();
 
   output("Playing: " + song.name);
 
-  current++;
+  currentIndex++;
 
-  if (current >= songs.length) {
-    current = 0;
+  if (currentIndex >= songs.length) {
+    currentIndex = 0;
   }
 }
 
 // =========================
-// 🧠 UI HELPERS
+// UI
 // =========================
+
 function output(text) {
   outputEl.textContent = text;
-}
-
-function setState(state) {
-  orb.className = "orb " + state;
+  console.log("OUTPUT:", text);
 }
