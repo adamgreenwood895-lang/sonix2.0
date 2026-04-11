@@ -1,19 +1,23 @@
+// ===============================
+// SONIX 2.0 - STABLE FINAL CORE
+// ===============================
+
 const audio = document.getElementById("audio");
 const outputEl = document.getElementById("output");
 const statusEl = document.getElementById("status");
-const orb = document.getElementById("orb");
 const playBtn = document.getElementById("playBtn");
 
-// =========================
-// 🔐 GLOBAL AUDIO UNLOCK
-// =========================
+// ===============================
+// STATE
+// ===============================
 
 let isUnlocked = false;
-let voiceActive = false;
+let voiceStarted = false;
+let currentTrack = null;
 
-// =========================
-// 🎧 MUSIC LIBRARY
-// =========================
+// ===============================
+// MUSIC LIBRARY (CONFIRMED PATHS)
+// ===============================
 
 const tracks = [
   "/music/chill1.mp3",
@@ -22,104 +26,59 @@ const tracks = [
   "/music/dance2.mp3"
 ];
 
-let currentTrack = null;
-
-// =========================
-// 🚀 BOOT
-// =========================
+// ===============================
+// BOOT
+// ===============================
 
 window.addEventListener("load", () => {
-  output("Tap anywhere to activate SONIX");
-  setState("locked");
+  setStatus("Tap 'TEST AUDIO' to start");
+  setOutput("SONIX ready");
+  console.log("SONIX LOADED");
 });
 
-// =========================
-// 🔓 UNLOCK SYSTEM (CRITICAL)
-// =========================
+// ===============================
+// BUTTON = PRIMARY CONTROL (IMPORTANT)
+// ===============================
 
-document.addEventListener("click", async () => {
+playBtn.addEventListener("click", async () => {
 
-  if (isUnlocked) return;
+  console.log("BUTTON CLICKED");
 
-  try {
-    // unlock audio
-    audio.src = tracks[0];
-    await audio.play();
-    audio.pause();
-    audio.currentTime = 0;
+  // 🔓 FIRST CLICK = UNLOCK AUDIO + VOICE
+  if (!isUnlocked) {
 
-    // unlock speech
-    const msg = new SpeechSynthesisUtterance("SONIX online");
-    speechSynthesis.speak(msg);
+    try {
+      audio.src = tracks[0];
 
-    isUnlocked = true;
+      await audio.play();   // unlock
+      audio.pause();
+      audio.currentTime = 0;
 
-    output("SONIX ACTIVE ✔");
-    setState("active");
+      isUnlocked = true;
 
-    initVoice();
+      setStatus("ACTIVE");
+      setOutput("SONIX unlocked ✔");
 
-  } catch (e) {
-    output("Tap again to enable audio");
+      speak("Sonix online");
+
+      startVoice(); // only after unlock
+
+    } catch (e) {
+      console.log("UNLOCK FAILED", e);
+      setOutput("Tap again to enable audio");
+      return;
+    }
   }
 
+  // ▶️ AFTER UNLOCK = PLAY MUSIC
+  playRandom();
 });
 
-// =========================
-// 🎤 VOICE SYSTEM (STARTS AFTER UNLOCK)
-// =========================
-
-function initVoice() {
-
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  if (!SpeechRecognition) {
-    output("Voice not supported");
-    return;
-  }
-
-  const rec = new SpeechRecognition();
-  rec.continuous = true;
-  rec.lang = "en-GB";
-
-  try {
-    rec.start();
-    voiceActive = true;
-    output("Voice active");
-  } catch {
-    output("Voice blocked");
-    return;
-  }
-
-  rec.onresult = (e) => {
-
-    const text =
-      e.results[e.results.length - 1][0].transcript.toLowerCase();
-
-    output(text);
-
-    if (text.includes("play")) playRandom();
-    if (text.includes("stop")) stop();
-  };
-
-  rec.onend = () => {
-    setTimeout(() => {
-      try { rec.start(); } catch {}
-    }, 1500);
-  };
-}
-
-// =========================
-// 🎧 PLAY
-// =========================
+// ===============================
+// PLAY SYSTEM
+// ===============================
 
 function playRandom() {
-
-  if (!isUnlocked) {
-    output("Tap screen first");
-    return;
-  }
 
   let pick;
 
@@ -132,39 +91,77 @@ function playRandom() {
   audio.src = pick;
 
   audio.play().then(() => {
-    output("Playing music");
-    setState("playing");
+    setOutput("Playing music");
   }).catch(() => {
-    output("Audio blocked");
+    setOutput("Audio blocked — tap again");
   });
 }
 
-// =========================
-// ⏹ STOP
-// =========================
+// ===============================
+// VOICE SYSTEM (SAFE START)
+// ===============================
 
-function stop() {
-  audio.pause();
-  output("Stopped");
+function startVoice() {
+
+  if (voiceStarted) return;
+
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    setOutput("Voice not supported");
+    return;
+  }
+
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.lang = "en-GB";
+
+  try {
+    rec.start();
+    voiceStarted = true;
+    setOutput("Voice active");
+  } catch {
+    setOutput("Voice blocked");
+    return;
+  }
+
+  rec.onresult = (e) => {
+
+    const text =
+      e.results[e.results.length - 1][0].transcript.toLowerCase();
+
+    console.log("VOICE:", text);
+    setOutput(text);
+
+    if (text.includes("play")) playRandom();
+    if (text.includes("stop")) audio.pause();
+  };
+
+  rec.onend = () => {
+    setTimeout(() => {
+      try { rec.start(); } catch {}
+    }, 1500);
+  };
 }
 
-// =========================
-// ▶️ BUTTON (FORCE WORK)
-// =========================
+// ===============================
+// SPEECH OUTPUT
+// ===============================
 
-if (playBtn) {
-  playBtn.addEventListener("click", playRandom);
+function speak(text) {
+  const msg = new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(msg);
 }
 
-// =========================
-// UI
-// =========================
+// ===============================
+// UI HELPERS
+// ===============================
 
-function output(text) {
+function setOutput(text) {
   if (outputEl) outputEl.textContent = text;
 }
 
-function setState(state) {
-  if (statusEl) statusEl.textContent = state;
-  if (orb) orb.className = "orb " + state;
+function setStatus(text) {
+  if (statusEl) statusEl.textContent = text;
 }
