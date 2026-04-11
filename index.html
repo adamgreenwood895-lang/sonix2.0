@@ -15,16 +15,20 @@
 
   <div class="hero">
     <div class="title">SONIX</div>
-    <div id="sub">awakening</div>
+    <div id="sub">ready</div>
   </div>
 
   <div id="orb" class="orb idle"></div>
 
-  <div id="status">Starting...</div>
+  <div id="status">Idle</div>
 
-  <div id="output">Say "Hey SONIX"</div>
+  <div id="output">Say “Hey SONIX” or upload music</div>
 
+  <!-- ✅ FIXED UPLOAD INPUT -->
   <input type="file" id="upload" multiple accept="audio/*">
+
+  <!-- test button (IMPORTANT fallback) -->
+  <button id="testPlay">Test Play</button>
 
   <audio id="audio"></audio>
 
