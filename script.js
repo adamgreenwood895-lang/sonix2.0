@@ -1,11 +1,31 @@
+// ===============================
+// SONIX 2.0 - STABLE AI CORE
+// ===============================
+
 const audio = document.getElementById("audio");
 const outputEl = document.getElementById("output");
 const statusEl = document.getElementById("status");
 const orb = document.getElementById("orb");
 
-// =========================
-// 🎧 MUSIC LIBRARY (LOCAL FILES)
-// =========================
+let uploadedSongs = [];
+let uploadIndex = 0;
+
+// ===============================
+// 🧠 MEMORY (SAFE STORAGE)
+// ===============================
+
+let memory = JSON.parse(localStorage.getItem("sonix_memory")) || {
+  name: null,
+  interactions: 0
+};
+
+function saveMemory() {
+  localStorage.setItem("sonix_memory", JSON.stringify(memory));
+}
+
+// ===============================
+// 🎧 MUSIC LIBRARY (REPO FILES)
+// ===============================
 
 const library = {
   chill: [
@@ -18,29 +38,9 @@ const library = {
   ]
 };
 
-// =========================
-// 📁 UPLOADED SONGS
-// =========================
-
-let uploadedSongs = [];
-let uploadIndex = 0;
-
-// =========================
-// 🧠 MEMORY SYSTEM
-// =========================
-
-let memory = JSON.parse(localStorage.getItem("sonix_memory")) || {
-  name: null,
-  interactions: 0
-};
-
-function saveMemory() {
-  localStorage.setItem("sonix_memory", JSON.stringify(memory));
-}
-
-// =========================
-// 🚀 SAFE INIT (PREVENT BREAKS)
-// =========================
+// ===============================
+// 🚀 SAFE INIT (NO CRASH SYSTEM)
+// ===============================
 
 window.addEventListener("load", () => {
 
@@ -48,9 +48,9 @@ window.addEventListener("load", () => {
 
   const upload = document.getElementById("upload");
 
-  // =========================
-  // 📁 UPLOAD SYSTEM (FIXED)
-  // =========================
+  // ===============================
+  // 📁 UPLOAD SYSTEM
+  // ===============================
 
   if (upload) {
     upload.addEventListener("change", (e) => {
@@ -68,9 +68,9 @@ window.addEventListener("load", () => {
     });
   }
 
-  // =========================
-  // 🎤 VOICE SYSTEM (WORKING CORE)
-  // =========================
+  // ===============================
+  // 🎤 VOICE SYSTEM (SAFE)
+  // ===============================
 
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -80,15 +80,20 @@ window.addEventListener("load", () => {
     return;
   }
 
-  const rec = new SpeechRecognition();
-  rec.continuous = true;
-  rec.lang = "en-GB";
+  let rec;
 
   try {
+    rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.lang = "en-GB";
+
     rec.start();
-    log("VOICE STARTED ✔");
+    log("VOICE ENGINE STARTED ✔");
+
   } catch (e) {
-    log("VOICE ERROR START: " + e.message);
+    output("Voice blocked — enable microphone permission");
+    log("VOICE START ERROR: " + e.message);
+    return;
   }
 
   rec.onresult = (e) => {
@@ -97,9 +102,11 @@ window.addEventListener("load", () => {
       e.results[e.results.length - 1][0].transcript.toLowerCase();
 
     output(text);
+
     memory.interactions++;
     saveMemory();
 
+    // wake word
     if (text.includes("hey sonix")) {
       speak("I'm here");
       setState("listening");
@@ -109,20 +116,40 @@ window.addEventListener("load", () => {
     handleCommand(text);
   };
 
-  rec.onend = () => {
-    setTimeout(() => rec.start(), 400);
+  rec.onerror = (e) => {
+
+    log("VOICE ERROR: " + e.error);
+
+    if (e.error === "not-allowed") {
+      output("Microphone blocked — allow permission in browser settings");
+    }
+
+    if (e.error === "no-speech") {
+      output("Waiting for voice input...");
+    }
   };
+
+  rec.onend = () => {
+    setTimeout(() => {
+      try {
+        rec.start();
+      } catch (e) {
+        log("VOICE RESTART FAILED");
+      }
+    }, 500);
+  };
+
 });
 
-// =========================
+// ===============================
 // 🧠 COMMAND ENGINE
-// =========================
+// ===============================
 
 function handleCommand(text) {
 
   // NAME MEMORY
   if (text.includes("my name is")) {
-    const name = text.split("my name is")[1].trim();
+    const name = text.split("my name is")[1]?.trim();
     memory.name = name;
     saveMemory();
     speak(`Nice to meet you ${name}`);
@@ -145,16 +172,16 @@ function handleCommand(text) {
   speak("I heard you");
 }
 
-// =========================
+// ===============================
 // 🎧 PLAY GENRE (LOCAL FILES)
-// =========================
+// ===============================
 
 function playGenre(genre) {
 
   const songs = library[genre];
 
   if (!songs || songs.length === 0) {
-    output("No songs found in " + genre);
+    output("No songs in " + genre);
     return;
   }
 
@@ -167,9 +194,9 @@ function playGenre(genre) {
   setState("speaking");
 }
 
-// =========================
+// ===============================
 // 🎧 PLAY ANY (UPLOAD FIRST)
-// =========================
+// ===============================
 
 function playAny() {
 
@@ -199,41 +226,49 @@ function playAny() {
   output("Playing system track");
 }
 
-// =========================
-// ⏹ STOP
-// =========================
+// ===============================
+// ⏹ STOP MUSIC
+// ===============================
 
 function stopMusic() {
   audio.pause();
   output("Music stopped");
 }
 
-// =========================
-// 🗣️ VOICE OUTPUT
-// =========================
+// ===============================
+// 🗣️ SPEECH OUTPUT
+// ===============================
 
 function speak(text) {
-  speechSynthesis.cancel();
 
-  const msg = new SpeechSynthesisUtterance(text);
-  msg.rate = 1;
-  msg.pitch = 1.05;
+  try {
+    speechSynthesis.cancel();
 
-  speechSynthesis.speak(msg);
+    const msg = new SpeechSynthesisUtterance(text);
+    msg.rate = 1;
+    msg.pitch = 1.05;
+
+    speechSynthesis.speak(msg);
+
+  } catch (e) {
+    log("SPEAK ERROR");
+  }
 }
 
-// =========================
-// 📺 UI
-// =========================
-
-function setState(state) {
-  if (orb) orb.className = "orb " + state;
-}
+// ===============================
+// 📺 UI HELPERS
+// ===============================
 
 function output(text) {
   if (outputEl) outputEl.textContent = text;
+  log(text);
+}
+
+function setState(state) {
+  if (orb) orb.className = "orb " + state;
+  if (statusEl) statusEl.textContent = state;
 }
 
 function log(msg) {
   console.log("SONIX:", msg);
-}
+    }
