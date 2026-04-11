@@ -2,9 +2,11 @@ const audio = document.getElementById("audio");
 const outputEl = document.getElementById("output");
 const statusEl = document.getElementById("status");
 const orb = document.getElementById("orb");
+const upload = document.getElementById("upload");
+const playBtn = document.getElementById("playBtn");
 
 // =========================
-// 🎧 MUSIC LIBRARY (FIXED PATHS)
+// 🎧 MUSIC LIBRARY
 // =========================
 
 const library = {
@@ -39,7 +41,7 @@ function saveMemory() {
 }
 
 // =========================
-// 🚀 INIT SAFE MODE
+// 🚀 BOOT SYSTEM (IMPORTANT FIX)
 // =========================
 
 window.addEventListener("load", () => {
@@ -47,10 +49,8 @@ window.addEventListener("load", () => {
   boot("SONIX ONLINE ✔");
 
   // =========================
-  // 📁 UPLOAD SYSTEM
+  // 📁 UPLOAD
   // =========================
-
-  const upload = document.getElementById("upload");
 
   if (upload) {
     upload.addEventListener("change", (e) => {
@@ -64,19 +64,29 @@ window.addEventListener("load", () => {
 
       uploadIndex = 0;
 
-      output(`Uploaded ${uploadedSongs.length} songs`);
+      output(`Uploaded ${uploadedSongs.length} songs ✔`);
     });
   }
 
   // =========================
-  // 🎤 VOICE SYSTEM (SAFE)
+  // ▶️ TEST BUTTON (FIXED)
   // =========================
+
+  if (playBtn) {
+    playBtn.addEventListener("click", () => {
+      playAny();
+    });
+  }
+
+  // =========================
+  // 🎤 VOICE ENGINE (SAFE)
+// =========================
 
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    output("Voice not supported — using manual mode");
+    output("Voice not supported — manual mode active");
     return;
   }
 
@@ -87,11 +97,10 @@ window.addEventListener("load", () => {
     rec.continuous = true;
     rec.lang = "en-GB";
     rec.start();
-
     boot("VOICE ACTIVE ✔");
 
   } catch (e) {
-    output("Voice blocked — click screen & retry");
+    output("Voice blocked — click page & retry");
     console.log(e);
     return;
   }
@@ -116,10 +125,11 @@ window.addEventListener("load", () => {
   };
 
   rec.onerror = (e) => {
+
     console.log("VOICE ERROR:", e.error);
 
     if (e.error === "not-allowed") {
-      output("Microphone blocked — enable permission in Chrome settings");
+      output("Microphone blocked — enable permission in Chrome");
     }
   };
 
@@ -132,12 +142,11 @@ window.addEventListener("load", () => {
 });
 
 // =========================
-// 🧠 COMMAND ENGINE
+// 🧠 COMMANDS
 // =========================
 
 function handle(text) {
 
-  // MEMORY
   if (text.includes("my name is")) {
     const name = text.split("my name is")[1]?.trim();
     memory.name = name;
@@ -151,7 +160,6 @@ function handle(text) {
     return;
   }
 
-  // MUSIC COMMANDS
   if (text.includes("play chill")) return playGenre("chill");
   if (text.includes("play dance")) return playGenre("dance");
 
@@ -171,7 +179,7 @@ function playGenre(type) {
   const list = library[type];
 
   if (!list || list.length === 0) {
-    output("No music found in " + type);
+    output("No songs in " + type);
     return;
   }
 
@@ -185,7 +193,7 @@ function playGenre(type) {
 }
 
 // =========================
-// 🎧 PLAY ANY (UPLOAD FIRST)
+// 🎧 PLAY ANY
 // =========================
 
 function playAny() {
@@ -224,7 +232,7 @@ function stop() {
 }
 
 // =========================
-// 🗣️ SPEECH OUTPUT
+// 🗣️ SPEAK
 // =========================
 
 function speak(text) {
@@ -238,12 +246,11 @@ function speak(text) {
 }
 
 // =========================
-// 📺 UI HELPERS
+// 📺 UI
 // =========================
 
 function output(text) {
   if (outputEl) outputEl.textContent = text;
-  console.log("SONIX:", text);
 }
 
 function setState(state) {
