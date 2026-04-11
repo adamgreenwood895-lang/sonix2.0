@@ -1,18 +1,33 @@
-// ===============================
-// SONIX 2.0 - STABLE AI CORE
-// ===============================
-
 const audio = document.getElementById("audio");
 const outputEl = document.getElementById("output");
 const statusEl = document.getElementById("status");
 const orb = document.getElementById("orb");
 
+// =========================
+// 🎧 MUSIC LIBRARY (FIXED PATHS)
+// =========================
+
+const library = {
+  chill: [
+    "/music/chill1.mp3",
+    "/music/chill2.mp3"
+  ],
+  dance: [
+    "/music/dance1.mp3",
+    "/music/dance2.mp3"
+  ]
+};
+
+// =========================
+// 📁 UPLOADED SONGS
+// =========================
+
 let uploadedSongs = [];
 let uploadIndex = 0;
 
-// ===============================
-// 🧠 MEMORY (SAFE STORAGE)
-// ===============================
+// =========================
+// 🧠 MEMORY
+// =========================
 
 let memory = JSON.parse(localStorage.getItem("sonix_memory")) || {
   name: null,
@@ -23,60 +38,45 @@ function saveMemory() {
   localStorage.setItem("sonix_memory", JSON.stringify(memory));
 }
 
-// ===============================
-// 🎧 MUSIC LIBRARY (REPO FILES)
-// ===============================
-
-const library = {
-  chill: [
-    "music/chill1.mp3",
-    "music/chill2.mp3"
-  ],
-  dance: [
-    "music/dance1.mp3",
-    "music/dance2.mp3"
-  ]
-};
-
-// ===============================
-// 🚀 SAFE INIT (NO CRASH SYSTEM)
-// ===============================
+// =========================
+// 🚀 INIT SAFE MODE
+// =========================
 
 window.addEventListener("load", () => {
 
-  log("SONIX CORE LOADED ✔");
+  boot("SONIX ONLINE ✔");
+
+  // =========================
+  // 📁 UPLOAD SYSTEM
+  // =========================
 
   const upload = document.getElementById("upload");
-
-  // ===============================
-  // 📁 UPLOAD SYSTEM
-  // ===============================
 
   if (upload) {
     upload.addEventListener("change", (e) => {
 
       const files = Array.from(e.target.files || []);
 
-      uploadedSongs = files.map(file => ({
-        name: file.name,
-        url: URL.createObjectURL(file)
+      uploadedSongs = files.map(f => ({
+        name: f.name,
+        url: URL.createObjectURL(f)
       }));
 
       uploadIndex = 0;
 
-      output(`Uploaded ${uploadedSongs.length} songs ✔`);
+      output(`Uploaded ${uploadedSongs.length} songs`);
     });
   }
 
-  // ===============================
+  // =========================
   // 🎤 VOICE SYSTEM (SAFE)
-  // ===============================
+  // =========================
 
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    output("Voice not supported in this browser");
+    output("Voice not supported — using manual mode");
     return;
   }
 
@@ -86,13 +86,13 @@ window.addEventListener("load", () => {
     rec = new SpeechRecognition();
     rec.continuous = true;
     rec.lang = "en-GB";
-
     rec.start();
-    log("VOICE ENGINE STARTED ✔");
+
+    boot("VOICE ACTIVE ✔");
 
   } catch (e) {
-    output("Voice blocked — enable microphone permission");
-    log("VOICE START ERROR: " + e.message);
+    output("Voice blocked — click screen & retry");
+    console.log(e);
     return;
   }
 
@@ -106,48 +106,38 @@ window.addEventListener("load", () => {
     memory.interactions++;
     saveMemory();
 
-    // wake word
     if (text.includes("hey sonix")) {
       speak("I'm here");
       setState("listening");
       return;
     }
 
-    handleCommand(text);
+    handle(text);
   };
 
   rec.onerror = (e) => {
-
-    log("VOICE ERROR: " + e.error);
+    console.log("VOICE ERROR:", e.error);
 
     if (e.error === "not-allowed") {
-      output("Microphone blocked — allow permission in browser settings");
-    }
-
-    if (e.error === "no-speech") {
-      output("Waiting for voice input...");
+      output("Microphone blocked — enable permission in Chrome settings");
     }
   };
 
   rec.onend = () => {
     setTimeout(() => {
-      try {
-        rec.start();
-      } catch (e) {
-        log("VOICE RESTART FAILED");
-      }
+      try { rec.start(); } catch {}
     }, 500);
   };
 
 });
 
-// ===============================
+// =========================
 // 🧠 COMMAND ENGINE
-// ===============================
+// =========================
 
-function handleCommand(text) {
+function handle(text) {
 
-  // NAME MEMORY
+  // MEMORY
   if (text.includes("my name is")) {
     const name = text.split("my name is")[1]?.trim();
     memory.name = name;
@@ -166,41 +156,40 @@ function handleCommand(text) {
   if (text.includes("play dance")) return playGenre("dance");
 
   if (text.includes("play")) return playAny();
-  if (text.includes("stop")) return stopMusic();
+  if (text.includes("stop")) return stop();
   if (text.includes("next")) return playAny();
 
   speak("I heard you");
 }
 
-// ===============================
-// 🎧 PLAY GENRE (LOCAL FILES)
-// ===============================
+// =========================
+// 🎧 PLAY GENRE (FIXED PATH)
+// =========================
 
-function playGenre(genre) {
+function playGenre(type) {
 
-  const songs = library[genre];
+  const list = library[type];
 
-  if (!songs || songs.length === 0) {
-    output("No songs in " + genre);
+  if (!list || list.length === 0) {
+    output("No music found in " + type);
     return;
   }
 
-  const pick = songs[Math.floor(Math.random() * songs.length)];
+  const pick = list[Math.floor(Math.random() * list.length)];
 
   audio.src = pick;
   audio.play();
 
-  output("Playing " + genre + ": " + pick);
+  output("Playing " + type);
   setState("speaking");
 }
 
-// ===============================
+// =========================
 // 🎧 PLAY ANY (UPLOAD FIRST)
-// ===============================
+// =========================
 
 function playAny() {
 
-  // uploaded songs first
   if (uploadedSongs.length > 0) {
 
     const song = uploadedSongs[uploadIndex];
@@ -216,7 +205,6 @@ function playAny() {
     return;
   }
 
-  // fallback library
   const all = Object.values(library).flat();
   const pick = all[Math.floor(Math.random() * all.length)];
 
@@ -226,42 +214,36 @@ function playAny() {
   output("Playing system track");
 }
 
-// ===============================
-// ⏹ STOP MUSIC
-// ===============================
+// =========================
+// ⏹ STOP
+// =========================
 
-function stopMusic() {
+function stop() {
   audio.pause();
-  output("Music stopped");
+  output("Stopped");
 }
 
-// ===============================
+// =========================
 // 🗣️ SPEECH OUTPUT
-// ===============================
+// =========================
 
 function speak(text) {
-
   try {
     speechSynthesis.cancel();
-
     const msg = new SpeechSynthesisUtterance(text);
     msg.rate = 1;
     msg.pitch = 1.05;
-
     speechSynthesis.speak(msg);
-
-  } catch (e) {
-    log("SPEAK ERROR");
-  }
+  } catch {}
 }
 
-// ===============================
+// =========================
 // 📺 UI HELPERS
-// ===============================
+// =========================
 
 function output(text) {
   if (outputEl) outputEl.textContent = text;
-  log(text);
+  console.log("SONIX:", text);
 }
 
 function setState(state) {
@@ -269,6 +251,7 @@ function setState(state) {
   if (statusEl) statusEl.textContent = state;
 }
 
-function log(msg) {
-  console.log("SONIX:", msg);
-    }
+function boot(text) {
+  output(text);
+  setState("active");
+}
