@@ -18,17 +18,19 @@
     <div id="sub">ready</div>
   </div>
 
-  <div id="orb" class="orb idle"></div>
+  <div id="orb" class="orb"></div>
 
   <div id="status">Idle</div>
 
-  <div id="output">Say “Hey SONIX” or upload music</div>
+  <div id="output">Upload music to begin</div>
 
-  <!-- ✅ FIXED UPLOAD INPUT -->
-  <input type="file" id="upload" multiple accept="audio/*">
+  <!-- ✅ IMPORTANT FIX: label wrapper (mobile-safe click trigger) -->
+  <label class="uploadBtn">
+    Upload Music
+    <input type="file" id="upload" multiple accept="audio/*">
+  </label>
 
-  <!-- test button (IMPORTANT fallback) -->
-  <button id="testPlay">Test Play</button>
+  <button id="playBtn">Play Music</button>
 
   <audio id="audio"></audio>
 
