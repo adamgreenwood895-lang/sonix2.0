@@ -1,42 +1,156 @@
-console.log("SONIX SCRIPT LOADED ✔");
+// ===============================
+// SONIX 2.0 — STABLE WORKING CORE
+// ===============================
 
-// ELEMENT CHECKS
-const btn = document.getElementById("playBtn");
+const audio = document.getElementById("audio");
 const output = document.getElementById("output");
 const status = document.getElementById("status");
-const audio = document.getElementById("audio");
+const btn = document.getElementById("playBtn");
 
-// SHOW IF ELEMENTS EXIST
-console.log("BTN:", btn);
-console.log("OUTPUT:", output);
-console.log("STATUS:", status);
-console.log("AUDIO:", audio);
+// IMPORTANT: correct GitHub path
+const tracks = [
+  "music/chill1.mp3",
+  "music/chill2.mp3",
+  "music/dance1.mp3",
+  "music/dance2.mp3"
+];
 
-// IF BUTTON NOT FOUND → STOP HERE
-if (!btn) {
-  alert("ERROR: playBtn NOT FOUND in HTML");
-}
+let unlocked = false;
+let voiceActive = false;
+let currentTrack = null;
 
-// TEST CLICK
-btn.addEventListener("click", () => {
+// ===============================
+// BOOT
+// ===============================
 
-  console.log("BUTTON CLICKED ✔");
+window.addEventListener("load", () => {
+  output.textContent = "Press TEST AUDIO";
+  status.textContent = "READY";
+  console.log("SONIX LOADED");
+});
 
-  output.textContent = "Button works ✔";
+// ===============================
+// BUTTON (MAIN CONTROL)
+// ===============================
 
-  // SIMPLE AUDIO TEST
-  const testTrack = "music/chill1.mp3";
+btn.addEventListener("click", async () => {
 
-  audio.src = testTrack;
+  console.log("BUTTON CLICKED");
+
+  // 🔓 FIRST CLICK = UNLOCK AUDIO + VOICE
+  if (!unlocked) {
+
+    try {
+      audio.src = "music/chill1.mp3";
+
+      await audio.play();
+      audio.pause();
+      audio.currentTime = 0;
+
+      unlocked = true;
+
+      output.textContent = "SONIX ACTIVE ✔";
+      status.textContent = "ACTIVE";
+
+      speak("Sonix online");
+
+      startVoice();
+
+    } catch (e) {
+      console.log(e);
+      output.textContent = "Tap again to enable audio";
+      return;
+    }
+  }
+
+  playRandom();
+});
+
+// ===============================
+// PLAY MUSIC
+// ===============================
+
+function playRandom() {
+
+  let pick;
+
+  do {
+    pick = tracks[Math.floor(Math.random() * tracks.length)];
+  } while (pick === currentTrack && tracks.length > 1);
+
+  currentTrack = pick;
+
+  audio.pause();
+  audio.currentTime = 0;
+
+  audio.src = pick;
+  audio.load();
 
   audio.play()
     .then(() => {
-      output.textContent = "Playing: chill1.mp3";
+      output.textContent = "Playing music";
       status.textContent = "PLAYING";
     })
-    .catch((err) => {
-      console.log("AUDIO ERROR:", err);
-      output.textContent = "Audio blocked or path wrong";
+    .catch(err => {
+      console.log(err);
+      output.textContent = "Audio blocked";
     });
+}
 
-});
+// ===============================
+// VOICE SYSTEM
+// ===============================
+
+function startVoice() {
+
+  if (voiceActive) return;
+
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    output.textContent = "Voice not supported";
+    return;
+  }
+
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.lang = "en-GB";
+
+  try {
+    rec.start();
+    voiceActive = true;
+    output.textContent = "Voice active";
+  } catch {
+    output.textContent = "Voice blocked";
+    return;
+  }
+
+  rec.onresult = (e) => {
+
+    const text =
+      e.results[e.results.length - 1][0].transcript.toLowerCase();
+
+    console.log("VOICE:", text);
+
+    output.textContent = text;
+
+    if (text.includes("play")) playRandom();
+    if (text.includes("stop")) audio.pause();
+  };
+
+  rec.onend = () => {
+    setTimeout(() => {
+      try { rec.start(); } catch {}
+    }, 1500);
+  };
+}
+
+// ===============================
+// SPEECH OUTPUT
+// ===============================
+
+function speak(text) {
+  const msg = new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(msg);
+}
