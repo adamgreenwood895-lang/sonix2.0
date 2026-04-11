@@ -83,3 +83,30 @@ body {
   margin-top: 5px;
   letter-spacing: 2px;
 }
+
+.uploadBtn {
+  display: block;
+  width: 180px;
+  margin: 20px auto;
+  padding: 12px;
+  text-align: center;
+  background: #00e5ff;
+  color: black;
+  font-weight: bold;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.uploadBtn input {
+  display: none;
+}
+
+#playBtn {
+  display: block;
+  margin: 10px auto;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  background: white;
+  font-weight: bold;
+}
