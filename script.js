@@ -21,36 +21,30 @@ const library = {
 };
 
 // =========================
-// 📁 UPLOADED SONGS
+// STATE CONTROL (IMPORTANT FIX)
+// =========================
+
+let currentTrack = null;
+let isPlaying = false;
+let lastCommandTime = 0;
+
+// prevent spam (1.5 sec cooldown)
+const COMMAND_DELAY = 1500;
+
+// =========================
+// UPLOAD
 // =========================
 
 let uploadedSongs = [];
 let uploadIndex = 0;
 
 // =========================
-// 🧠 MEMORY
-// =========================
-
-let memory = JSON.parse(localStorage.getItem("sonix_memory")) || {
-  name: null,
-  interactions: 0
-};
-
-function saveMemory() {
-  localStorage.setItem("sonix_memory", JSON.stringify(memory));
-}
-
-// =========================
-// 🚀 BOOT SYSTEM (IMPORTANT FIX)
+// INIT
 // =========================
 
 window.addEventListener("load", () => {
 
   boot("SONIX ONLINE ✔");
-
-  // =========================
-  // 📁 UPLOAD
-  // =========================
 
   if (upload) {
     upload.addEventListener("change", (e) => {
@@ -64,44 +58,42 @@ window.addEventListener("load", () => {
 
       uploadIndex = 0;
 
-      output(`Uploaded ${uploadedSongs.length} songs ✔`);
+      output(`Uploaded ${uploadedSongs.length} songs`);
     });
   }
-
-  // =========================
-  // ▶️ TEST BUTTON (FIXED)
-  // =========================
 
   if (playBtn) {
     playBtn.addEventListener("click", () => {
-      playAny();
+      playAny(true);
     });
   }
 
-  // =========================
-  // 🎤 VOICE ENGINE (SAFE)
+  initVoice();
+});
+
 // =========================
+// 🎤 VOICE SYSTEM (FIXED)
+// =========================
+
+function initVoice() {
 
   const SpeechRecognition =
     window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (!SpeechRecognition) {
-    output("Voice not supported — manual mode active");
+    output("Voice not supported");
     return;
   }
 
-  let rec;
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.lang = "en-GB";
 
   try {
-    rec = new SpeechRecognition();
-    rec.continuous = true;
-    rec.lang = "en-GB";
     rec.start();
     boot("VOICE ACTIVE ✔");
-
-  } catch (e) {
-    output("Voice blocked — click page & retry");
-    console.log(e);
+  } catch {
+    output("Voice blocked");
     return;
   }
 
@@ -110,14 +102,17 @@ window.addEventListener("load", () => {
     const text =
       e.results[e.results.length - 1][0].transcript.toLowerCase();
 
-    output(text);
+    const now = Date.now();
 
-    memory.interactions++;
-    saveMemory();
+    // 🔥 COOLDOWN FIX
+    if (now - lastCommandTime < COMMAND_DELAY) return;
+
+    lastCommandTime = now;
+
+    output(text);
 
     if (text.includes("hey sonix")) {
       speak("I'm here");
-      setState("listening");
       return;
     }
 
@@ -125,53 +120,35 @@ window.addEventListener("load", () => {
   };
 
   rec.onerror = (e) => {
-
-    console.log("VOICE ERROR:", e.error);
-
     if (e.error === "not-allowed") {
-      output("Microphone blocked — enable permission in Chrome");
+      output("Mic blocked");
     }
   };
 
+  // 🔥 SLOW RESTART FIX
   rec.onend = () => {
     setTimeout(() => {
       try { rec.start(); } catch {}
-    }, 500);
+    }, 1500);
   };
-
-});
+}
 
 // =========================
-// 🧠 COMMANDS
+// COMMANDS
 // =========================
 
 function handle(text) {
-
-  if (text.includes("my name is")) {
-    const name = text.split("my name is")[1]?.trim();
-    memory.name = name;
-    saveMemory();
-    speak(`Nice to meet you ${name}`);
-    return;
-  }
-
-  if (text.includes("who am i")) {
-    speak(memory.name ? `You are ${memory.name}` : "I don't know yet");
-    return;
-  }
 
   if (text.includes("play chill")) return playGenre("chill");
   if (text.includes("play dance")) return playGenre("dance");
 
   if (text.includes("play")) return playAny();
   if (text.includes("stop")) return stop();
-  if (text.includes("next")) return playAny();
-
-  speak("I heard you");
+  if (text.includes("next")) return playAny(true);
 }
 
 // =========================
-// 🎧 PLAY GENRE (FIXED PATH)
+// 🎧 PLAY GENRE (SMART RANDOM)
 // =========================
 
 function playGenre(type) {
@@ -179,33 +156,31 @@ function playGenre(type) {
   const list = library[type];
 
   if (!list || list.length === 0) {
-    output("No songs in " + type);
+    output("No songs");
     return;
   }
 
-  const pick = list[Math.floor(Math.random() * list.length)];
+  let pick;
 
-  audio.src = pick;
-  audio.play();
+  // 🔥 PREVENT SAME SONG LOOP
+  do {
+    pick = list[Math.floor(Math.random() * list.length)];
+  } while (pick === currentTrack && list.length > 1);
 
-  output("Playing " + type);
-  setState("speaking");
+  playTrack(pick, type);
 }
 
 // =========================
 // 🎧 PLAY ANY
 // =========================
 
-function playAny() {
+function playAny(forceNext = false) {
 
   if (uploadedSongs.length > 0) {
 
     const song = uploadedSongs[uploadIndex];
 
-    audio.src = song.url;
-    audio.play();
-
-    output("Playing: " + song.name);
+    playTrack(song.url, song.name);
 
     uploadIndex++;
     if (uploadIndex >= uploadedSongs.length) uploadIndex = 0;
@@ -214,39 +189,60 @@ function playAny() {
   }
 
   const all = Object.values(library).flat();
-  const pick = all[Math.floor(Math.random() * all.length)];
 
-  audio.src = pick;
-  audio.play();
+  let pick;
 
-  output("Playing system track");
+  do {
+    pick = all[Math.floor(Math.random() * all.length)];
+  } while (!forceNext && pick === currentTrack && all.length > 1);
+
+  playTrack(pick);
 }
 
 // =========================
-// ⏹ STOP
+// 🎧 CORE PLAYER (IMPORTANT FIX)
+// =========================
+
+function playTrack(src, label = "music") {
+
+  // 🔥 PREVENT RESTARTING SAME TRACK
+  if (isPlaying && currentTrack === src) {
+    output("Already playing");
+    return;
+  }
+
+  currentTrack = src;
+  isPlaying = true;
+
+  audio.src = src;
+  audio.play();
+
+  output("Playing " + label);
+  setState("playing");
+}
+
+// =========================
+// STOP
 // =========================
 
 function stop() {
   audio.pause();
+  isPlaying = false;
   output("Stopped");
 }
 
 // =========================
-// 🗣️ SPEAK
+// SPEAK
 // =========================
 
 function speak(text) {
-  try {
-    speechSynthesis.cancel();
-    const msg = new SpeechSynthesisUtterance(text);
-    msg.rate = 1;
-    msg.pitch = 1.05;
-    speechSynthesis.speak(msg);
-  } catch {}
+  speechSynthesis.cancel();
+  const msg = new SpeechSynthesisUtterance(text);
+  speechSynthesis.speak(msg);
 }
 
 // =========================
-// 📺 UI
+// UI
 // =========================
 
 function output(text) {
